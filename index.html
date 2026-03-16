@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Timer</title>
+</head>
+<body style="margin:0;overflow:hidden;">
+    <div style="font-family:Arial,sans-serif;font-size:20px;text-align:center;margin-top:10px;">離暑假還有</div>
+    <div id="label" style="font-family:Arial,sans-serif;font-size:30px;font-weight:bold;height:50px;display:flex;align-items:center;justify-content:center;"></div>
+    <div style="font-family:Arial,sans-serif;font-size:20px;text-align:center;">天</div>
+    <script>
+        const target = 1782835200;
+        const label = document.getElementById("label");
+
+        const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        function beep(freq, dur=300) {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.frequency.value = freq;
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start();
+            g.gain.setValueAtTime(1, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur/1000);
+            o.stop(audioCtx.currentTime + dur/1000);
+        }
+
+        function playBeep(x) {
+            if (x > 3) beep(800);
+            else if (x > 2) beep(600);
+            else if (x > 1) beep(400);
+            else if (x > 0) beep(200);
+        }
+
+        let lastBeep = null;
+        function update() {
+            const now = Date.now() / 1000;
+            const remaining = target - now;
+            label.textContent = remaining.toFixed(2);
+
+            const remInt = Math.floor(remaining);
+            const frac = (remaining * 1000) % 1000;
+
+            if (remaining > 0 && frac < 10) {
+                if (remInt % 10000 === 0 && lastBeep !== remInt) {
+                    playBeep(4);
+                    lastBeep = remInt;
+                } else if (remInt % 1000 === 0 && lastBeep !== remInt) {
+                    playBeep(3);
+                    lastBeep = remInt;
+                }
+            }
+        }
+
+        setInterval(update, 10);
+    </script>
+</body>
+</html>
