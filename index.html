@@ -14,6 +14,7 @@
             height: 100vh;
             background: linear-gradient(180deg, #e0f7fa 0%, #fff 100%);
             transition: background-color 1s ease;
+            user-select: none;
         }
         #progressSvg {
             position: fixed;
@@ -38,6 +39,7 @@
             line-height: 1.2;
             text-shadow: 2px 2px 10px rgba(0,0,0,0.1);
             color: #333;
+            cursor: pointer;
         }
         .sub-info {
             font-family: Arial, sans-serif;
@@ -50,6 +52,63 @@
             margin-left: 10px;
             color: #888;
         }
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            font-size: 2rem;
+            z-index: 100;
+            animation: floatUp 1.5s ease-out forwards;
+        }
+        #settingsBtn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px;
+            background: rgba(255,255,255,0.8);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            z-index: 1001;
+            font-family: 'Segoe UI', sans-serif;
+            width: 300px;
+            backdrop-filter: blur(10px);
+        }
+        .modal h3 { margin-top: 0; color: #0078d4; }
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        .modal-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-btns button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-add { background: #0078d4; color: white; }
+        .btn-close { background: #eee; color: #666; }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -58,16 +117,47 @@
         <path id="progressRect" d="M 500 10 L 990 10 L 990 990 L 10 990 L 10 10 L 500 10" stroke-linecap="round" stroke-dasharray="0 0" stroke-dashoffset="0"/>
     </svg>
 
+    <button id="settingsBtn">⚙️ 自定義</button>
+    <div id="modal" class="modal">
+        <h3>新增自定義單位</h3>
+        <input type="text" id="customName" placeholder="單位名稱 (如: 雞排吃完)">
+        <input type="number" id="customTime" placeholder="所需秒數 (如: 600)">
+        <div class="modal-btns">
+            <button class="btn-add" onclick="addCustom()">新增</button>
+            <button class="btn-close" onclick="document.getElementById('modal').style.display='none'">關閉</button>
+        </div>
+    </div>
+
     <div style="font-family:Arial,sans-serif;font-size:4vw;text-align:center;color:#0078d4;text-shadow: 1px 1px 2px white;">距離暑假解放還有</div>
     <div id="label"></div>
     <div id="subLabel" class="sub-info"></div>
 
+
     <script>
         const target = 1782835200;
+        const startOfSchoolTime = 1725148800; // Example: 2024-09-01
         const label = document.getElementById("label");
         const progress = document.getElementById("progressRect");
         const subLabel = document.getElementById("subLabel");
         
+        let displayMode = 0;
+        const modes = [
+            { unit: "秒", calc: (s) => s.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) },
+            { unit: "次心跳", calc: (s) => Math.floor(s / 0.8).toLocaleString() },
+            { unit: "次眨眼", calc: (s) => Math.floor(s / 4).toLocaleString() },
+            { unit: "公里地球公轉", calc: (s) => Math.floor(s * 30).toLocaleString() },
+            { unit: "次地球自轉", calc: (s) => (s / 86400).toFixed(2) },
+            { unit: "堂 50 分鐘的課", calc: (s) => Math.floor(s / 3000).toLocaleString() },
+            { unit: "次下課休息", calc: (s) => Math.floor(s / 3600).toLocaleString() },
+            { unit: "套《魔戒》三部曲", calc: (s) => Math.floor(s / 41400).toLocaleString() },
+            { unit: "場《英雄聯盟》對局", calc: (s) => Math.floor(s / 1800).toLocaleString() },
+            { unit: "碗泡麵泡好", calc: (s) => Math.floor(s / 180).toLocaleString() },
+            { unit: "次「再五分鐘就好」", calc: (s) => Math.floor(s / 300).toLocaleString() },
+            { unit: "次紅血球全身循環", calc: (s) => Math.floor(s / 60).toLocaleString() },
+            { unit: "場台積電法說會", calc: (s) => Math.floor(s / 3600).toLocaleString() },
+            
+        ];
+
         const totalLength = progress.getTotalLength();
         progress.style.transition = "none";
         progress.setAttribute("stroke-dasharray", totalLength);
@@ -98,10 +188,39 @@
             else if (x > 0) beep(200);
         }
 
-        window.addEventListener('mousedown', () => {
+        function createParticle(x, y) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.textContent = '';
+            p.style.color = '#0078d4';
+            p.style.left = (x - 20) + 'px';
+            p.style.top = (y - 20) + 'px';
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 1500);
+        }
+
+        window.addEventListener('mousedown', (e) => {
             initAudio();
             if(audioCtx.state === 'suspended') audioCtx.resume();
+            createParticle(e.clientX, e.clientY);
         });
+
+        label.addEventListener('click', () => {
+            displayMode = (displayMode + 1) % modes.length;
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'block';
+        });
+
+        function addCustom() {
+            const name = document.getElementById('customName').value;
+            const time = parseFloat(document.getElementById('customTime').value);
+            if (name && time > 0) {
+                modes.push({ unit: name, calc: (s) => Math.floor(s / time).toLocaleString() });
+                document.getElementById('modal').style.display = 'none';
+            }
+        }
 
         let lastBeep = null;
         function update() {
@@ -115,7 +234,11 @@
                 return;
             }
 
-            label.innerHTML = remaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '<span class="unit">秒</span>';
+            const progressDone = 1 - (remaining / (target - startOfSchoolTime));
+            document.body.style.background = `linear-gradient(180deg, hsl(190, 70%, 90%) 0%, hsl(${20 + (progressDone * 40)}, 100%, 95%) 100%)`;
+
+            const mode = modes[displayMode];
+            label.innerHTML = mode.calc(remaining) + `<span class="unit">${mode.unit}</span>`;
 
             const remInt = Math.floor(remaining);
             const frac = (remaining % 1) * 1000;
